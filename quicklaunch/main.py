@@ -483,11 +483,16 @@ class AddCategoryDialog(ctk.CTkToplevel):
         self.destroy()
 
 
-class QuickLaunchApp(ctk.CTk):
+class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
     """Hauptanwendung"""
     
     def __init__(self):
         super().__init__()
+        
+        # CustomTkinter Styling für TkinterDnD.Tk
+        if TKDND_AVAILABLE:
+            ctk.set_appearance_mode("dark")
+            ctk.set_default_color_theme("blue")
         
         self.title("QuickLaunch - Schnellstart")
         self.geometry("700x500")
