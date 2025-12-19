@@ -7,6 +7,7 @@ import os
 import subprocess
 
 from PIL import Image
+from utils.theme_manager import ThemeManager
 
 class ShortcutTile(ctk.CTkFrame):
     """Einzelne Kachel für eine Verknüpfung"""
@@ -86,7 +87,8 @@ class ShortcutTile(ctk.CTkFrame):
         self.type_label.place(relx=0.9, rely=0.1, anchor="center")
     
     def _on_enter(self, event):
-        self.configure(fg_color="#3d3d3d", border_color="#0078d4")
+        theme_border = ThemeManager.get_color("border")
+        self.configure(fg_color="#3d3d3d", border_color=theme_border)
     
     def _on_leave(self, event):
         self.configure(fg_color="#2b2b2b", border_color="#3d3d3d")

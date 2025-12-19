@@ -2,6 +2,8 @@ import customtkinter as ctk
 import time
 from datetime import datetime
 import tkinter as tk
+from utils.system_utils import get_system_stats
+from utils.theme_manager import ThemeManager
 
 class Topbar(ctk.CTkToplevel):
     def __init__(self, app_controller):
@@ -21,7 +23,7 @@ class Topbar(ctk.CTkToplevel):
         self.title("QuickLaunch Bar")
         
         # Dimensions (Increased height for better spacing)
-        self.width = 300
+        self.width = 350
         self.height = 55
         
         # Calculate position (Centered at top)
@@ -42,16 +44,18 @@ class Topbar(ctk.CTkToplevel):
         
         self._create_widgets()
         self._setup_context_menu()
-        self._update_clock()
+        self._update_status()
         
     def _create_widgets(self):
+        theme_border = ThemeManager.get_color("border")
+        
         # Main Pill Frame (Metallic: Gunmetal Gray, Silver Border)
         self.frame = ctk.CTkFrame(
             self, 
             fg_color="#2b2b2b", # Gunmetal Gray
             corner_radius=8,    # Machined part look
             border_width=2,
-            border_color="#a0a0a0", # Silver/Aluminum
+            border_color=theme_border, # Dynamic Border
             width=self.width,
             height=self.height
         )
@@ -62,14 +66,38 @@ class Topbar(ctk.CTkToplevel):
         # Layout container
         # Using Pack inside for clean vertical stacking
         
+        # Info Frame (CPU | Time | RAM)
+        self.info_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
+        self.info_frame.pack(side="top", pady=(5, 0), fill="x", padx=10)
+        
+        theme_accent = ThemeManager.get_color("accent_text")
+        
+        # CPU Label
+        self.cpu_label = ctk.CTkLabel(
+            self.info_frame,
+            text="CPU 0%",
+            font=("Segoe UI", 9, "bold"),
+            text_color=theme_accent # Dynamic
+        )
+        self.cpu_label.pack(side="left")
+
         # Clock / Date
         self.time_label = ctk.CTkLabel(
-            self.frame,
+            self.info_frame,
             text="--:--",
             font=("Segoe UI", 13, "bold"), # Standard Clean Font
             text_color="#f0f0f0"           # Off-White
         )
-        self.time_label.pack(side="top", pady=(5, 0))
+        self.time_label.pack(side="left", expand=True)
+        
+        # RAM Label
+        self.ram_label = ctk.CTkLabel(
+            self.info_frame,
+            text="RAM 0%",
+            font=("Segoe UI", 9, "bold"),
+            text_color=theme_accent # Dynamic
+        )
+        self.ram_label.pack(side="right", padx=(0, 50))
         
         # Separator Line (Groove look)
         self.separator = ctk.CTkFrame(
@@ -99,7 +127,7 @@ class Topbar(ctk.CTkToplevel):
             width=40,
             height=20
         )
-        self.controls_frame.place(relx=0.95, rely=0.15, anchor="ne")
+        self.controls_frame.place(relx=0.96, rely=0.10, anchor="ne")
         
         # Close Button
         self.close_btn = ctk.CTkLabel(
@@ -142,14 +170,20 @@ class Topbar(ctk.CTkToplevel):
         # Bind context menu to frame and labels
         self.frame.bind("<Button-3>", self._show_context_menu)
         self.time_label.bind("<Button-3>", self._show_context_menu)
+        self.cpu_label.bind("<Button-3>", self._show_context_menu)
+        self.ram_label.bind("<Button-3>", self._show_context_menu)
         self.arrow_btn.bind("<Button-3>", self._show_context_menu)
         
         # Dragging Bindings
         self.frame.bind("<Button-1>", self._start_move)
         self.time_label.bind("<Button-1>", self._start_move)
+        self.cpu_label.bind("<Button-1>", self._start_move)
+        self.ram_label.bind("<Button-1>", self._start_move)
         
         self.frame.bind("<B1-Motion>", self._on_move)
         self.time_label.bind("<B1-Motion>", self._on_move)
+        self.cpu_label.bind("<B1-Motion>", self._on_move)
+        self.ram_label.bind("<B1-Motion>", self._on_move)
 
     def _start_move(self, event):
         self._x = event.x
@@ -164,11 +198,36 @@ class Topbar(ctk.CTkToplevel):
         
         self.geometry(f"+{x}+{y}")
 
-    def _update_clock(self):
+    def _update_status(self):
+        # Update Clock
         now = datetime.now()
+        time_str = now.strftime("%H:%M") # Shorter format without date for space
+        # Or keep date if it fits. previous was %H:%M | %d.%m.%Y
+        # Let's try to keep it if possible, or cycle?
+        # Let's stick to short time + date in tool tip? No tooltips yet.
+        # Let's try full string.
         time_str = now.strftime("%H:%M  |  %d.%m.%Y")
         self.time_label.configure(text=time_str)
-        self.after(1000, self._update_clock)
+        
+        # Update Stats
+        cpu, ram = get_system_stats()
+        self.cpu_label.configure(text=f"CPU {int(cpu)}%")
+        self.ram_label.configure(text=f"RAM {int(ram)}%")
+        
+        theme_accent = ThemeManager.get_color("accent_text")
+        
+        # Color warning
+        if cpu > 80:
+             self.cpu_label.configure(text_color="#ff5555")
+        else:
+             self.cpu_label.configure(text_color=theme_accent)
+             
+        if ram > 80:
+             self.ram_label.configure(text_color="#ff5555")
+        else:
+             self.ram_label.configure(text_color=theme_accent)
+
+        self.after(1000, self._update_status)
         
     def _toggle_quicklaunch(self, event=None):
         is_visible = self.app_controller.toggle_quicklaunch_window()

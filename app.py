@@ -7,9 +7,11 @@ from PIL import Image, ImageDraw
 import threading
 import sys
 
+
 from config import load_config, save_config, setup_theme, ICONS_DIR
 from ui.tab import CategoryTab
-# ... (imports unchanged)
+from ui.dialogs import AddDialog, AddCategoryDialog, SettingsDialog
+from utils.theme_manager import ThemeManager
 
 class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
     """Hauptanwendung"""
@@ -19,14 +21,19 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.TkdndVersion = TkinterDnD._require(self)
         
         setup_theme()
-
-        self.title("QuickLaunch - Schnellstart")
-        self.geometry("700x500")
-        self.minsize(500, 400)
-        self.configure(fg_color="#1a1a1a")
         
         # Daten laden
         self.config_data = load_config()
+        
+        # Theme initialisieren
+        current_theme = self.config_data.get("settings", {}).get("accent_color", "Blue")
+        ThemeManager.set_theme(current_theme)
+
+        self.title("QuickLaunch - Schnellstart")
+        self.geometry("700x500")
+        self.minsize(600, 400)
+        self.configure(fg_color="#1a1a1a")
+        
         self.category_tabs = {}
         
         # Always on Top für Hauptfenster
@@ -51,7 +58,14 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         # Create a simple icon if none exists
         image = Image.new('RGB', (64, 64), color = (0, 0, 0))
         d = ImageDraw.Draw(image)
-        d.rectangle((16, 16, 48, 48), fill=(0, 229, 255)) # Cyan box
+        
+        # Use primary color for tray icon
+        primary_color = ThemeManager.get_color("primary")
+        # Convert hex to RGB for PIL
+        h = primary_color.lstrip('#')
+        rgb = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+        
+        d.rectangle((16, 16, 48, 48), fill=rgb) 
         d.text((22, 20), "QL", fill=(255, 255, 255))
         return image
 
@@ -94,7 +108,6 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.withdraw()
         if hasattr(self, 'topbar'):
             self.topbar.arrow_btn.configure(text="▼")
-    # ... rest unchanged
     
     def _create_ui(self):
         # Header
@@ -110,9 +123,30 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         )
         title_label.pack(side="left", padx=20, pady=15)
         
+        # Search Bar
+        self.search_var = ctk.StringVar()
+        self.search_var.trace("w", self._on_search)
+        
+        self.search_entry = ctk.CTkEntry(
+            header,
+            width=200,
+            height=32,
+            placeholder_text="Suche...",
+            textvariable=self.search_var,
+            border_width=1,
+            corner_radius=15,
+            fg_color="#1a1a1a",
+            border_color="#3d3d3d",
+            text_color="white"
+        )
+        self.search_entry.pack(side="left", padx=20)
+
         # Header Buttons
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=10)
+        
+        theme_primary = ThemeManager.get_color("primary")
+        theme_hover = ThemeManager.get_color("hover")
         
         # Dateien hinzufügen Button
         self.add_files_btn = ctk.CTkButton(
@@ -121,8 +155,8 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
             width=90,
             height=32,
             font=("Segoe UI", 12),
-            fg_color="#2d7d32",
-            hover_color="#388e3c",
+            fg_color=theme_primary, 
+            hover_color=theme_hover,
             command=self._add_files
         )
         self.add_files_btn.pack(side="left", padx=5)
@@ -145,8 +179,8 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
             width=110,
             height=32,
             font=("Segoe UI", 12),
-            fg_color="#0078d4",
-            hover_color="#1084d8",
+            fg_color=theme_primary,
+            hover_color=theme_hover,
             command=self._show_add_dialog
         )
         self.add_btn.pack(side="left", padx=5)
@@ -310,6 +344,14 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
     def quit_app(self):
         """Beendet die gesamte Anwendung."""
         self.destroy()
+
+    def _on_search(self, *args):
+        query = self.search_var.get().lower()
+        
+        # Determine the currently active tab
+        current_tab_name = self.tabview.get()
+        if current_tab_name in self.category_tabs:
+            self.category_tabs[current_tab_name].set_filter(query)
 
 def main():
     app = QuickLaunchApp()

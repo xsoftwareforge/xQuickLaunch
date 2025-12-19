@@ -38,8 +38,13 @@ class CategoryTab(ctk.CTkFrame):
         self.grid_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.grid_frame.pack(fill="both", expand=True)
         
+        self.current_filter = ""
         self._render_tiles()
     
+    def set_filter(self, query):
+        self.current_filter = query.lower()
+        self._render_tiles()
+        
     def update_settings(self, new_settings):
         self.settings = new_settings
         self._render_tiles()
@@ -54,7 +59,14 @@ class CategoryTab(ctk.CTkFrame):
         for widget in self.grid_frame.winfo_children():
             widget.destroy()
         
-        shortcuts = self.category_data.get("shortcuts", [])
+        all_shortcuts = self.category_data.get("shortcuts", [])
+        
+        # Filter Logic
+        if self.current_filter:
+            shortcuts = [s for s in all_shortcuts if self.current_filter in s.get("name", "").lower()]
+        else:
+            shortcuts = all_shortcuts
+            
         columns = self.settings.get("columns", 4)
         free_mode = self.settings.get("free_placement", False)
         tile_size = 116 # Approximate size (100 width + padding)

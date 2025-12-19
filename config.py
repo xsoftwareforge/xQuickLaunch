@@ -27,7 +27,8 @@ def load_config() -> dict:
                     "tile_size": 100,
                     "free_placement": False,
                     "topbar_always_on_top": True,
-                    "quicklaunch_always_on_top": False
+                    "quicklaunch_always_on_top": False,
+                    "accent_color": "Blue"
                 }
                 
                 for key, val in defaults.items():

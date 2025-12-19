@@ -1,6 +1,8 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from pathlib import Path
+from utils.system_utils import check_autostart, set_autostart
+from utils.theme_manager import ThemeManager
 
 class EditDialog(ctk.CTkToplevel):
     """Dialog zum Bearbeiten einer Verknüpfung"""
@@ -243,7 +245,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.save_callback = save_callback
         
         self.title("Einstellungen")
-        self.geometry("400x450")
+        self.geometry("400x580") # Increased height
         self.configure(fg_color="#1a1a1a")
         self.resizable(False, False)
         
@@ -293,6 +295,27 @@ class SettingsDialog(ctk.CTkToplevel):
             text_color="gray"
         ).pack(padx=45, pady=0, anchor="w")
 
+        # Themes (Akzentfarbe)
+        ctk.CTkLabel(self, text="Design", font=("Segoe UI", 14, "bold")).pack(pady=(15, 10), padx=20, anchor="w")
+        
+        self.accent_var = ctk.StringVar(value=self.settings.get("accent_color", "Blue"))
+        
+        self.theme_combo = ctk.CTkComboBox(
+            self,
+            values=ThemeManager.get_theme_names(),
+            variable=self.accent_var,
+            width=200,
+            state="readonly"
+        )
+        self.theme_combo.pack(padx=20, pady=5, anchor="w")
+        
+        ctk.CTkLabel(
+            self,
+            text="Hinweis: Neustart erforderlich für vollständige Änderung.",
+            font=("Segoe UI", 10),
+            text_color="gray"
+        ).pack(padx=20, pady=0, anchor="w")
+
         # Always On Top für QuickLaunch
         ctk.CTkLabel(self, text="Fenster Verhalten", font=("Segoe UI", 14, "bold")).pack(pady=(15, 10), padx=20, anchor="w")
         
@@ -306,6 +329,17 @@ class SettingsDialog(ctk.CTkToplevel):
         )
         self.aot_switch.pack(padx=20, pady=5, anchor="w")
         
+        # Autostart
+        self.autostart_var = ctk.BooleanVar(value=check_autostart())
+        
+        self.as_switch = ctk.CTkSwitch(
+            self,
+            text="Mit Windows starten",
+            variable=self.autostart_var,
+            font=("Segoe UI", 12)
+        )
+        self.as_switch.pack(padx=20, pady=10, anchor="w")
+        
         # Buttons
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(side="bottom", pady=20, fill="x", padx=20)
@@ -318,7 +352,8 @@ class SettingsDialog(ctk.CTkToplevel):
         
         ctk.CTkButton(
             btn_frame, text="Speichern", width=100,
-            fg_color="#0078d4", hover_color="#1084d8",
+            fg_color=ThemeManager.get_color("primary"), 
+            hover_color=ThemeManager.get_color("hover"),
             command=self._save
         ).pack(side="right", padx=5)
         
@@ -329,6 +364,10 @@ class SettingsDialog(ctk.CTkToplevel):
         self.settings["columns"] = int(self.columns_var.get())
         self.settings["free_placement"] = self.free_placement_var.get()
         self.settings["quicklaunch_always_on_top"] = self.always_on_top_var.get()
+        self.settings["accent_color"] = self.accent_var.get()
+        
+        # Apply Autostart immediately
+        set_autostart(self.autostart_var.get())
         
         self.save_callback()
         self.destroy()

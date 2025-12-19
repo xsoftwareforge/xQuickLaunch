@@ -2,17 +2,7 @@
   "categories": [
     {
       "name": "Allgemein",
-      "shortcuts": [
-        {
-          "name": "Update",
-          "path": "C:\\Users\\micro\\AppData\\Local\\WeMod\\Update.exe",
-          "type": "file",
-          "icon": "⚙️",
-          "image_path": "D:\\DEV\\Python\\xhotbar\\icons\\e741b26a6c3bba34d4900cb493c3eb21.png",
-          "x": 0,
-          "y": 0
-        }
-      ]
+      "shortcuts": []
     },
     {
       "name": "Arbeit",
@@ -27,6 +17,9 @@
     "theme": "dark",
     "columns": 4,
     "tile_size": 100,
-    "free_placement": true
+    "free_placement": true,
+    "topbar_always_on_top": true,
+    "quicklaunch_always_on_top": false,
+    "accent_color": "Red"
   }
 }
