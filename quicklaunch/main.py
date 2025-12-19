@@ -154,8 +154,6 @@ class CategoryTab(ctk.CTkFrame):
         self.grid_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.grid_frame.pack(fill="both", expand=True)
         
-        # Drop-Zone wird in der Hauptklasse registriert
-        
         self._render_tiles()
     
     def _render_tiles(self):
@@ -163,6 +161,10 @@ class CategoryTab(ctk.CTkFrame):
         for tile in self.tiles:
             tile.destroy()
         self.tiles.clear()
+        
+        # Alle Widgets im Grid entfernen
+        for widget in self.grid_frame.winfo_children():
+            widget.destroy()
         
         shortcuts = self.category_data.get("shortcuts", [])
         columns = 4
@@ -192,34 +194,31 @@ class CategoryTab(ctk.CTkFrame):
             )
             empty_label.grid(row=0, column=0, columnspan=4, pady=50)
     
-    def _on_drop(self, event):
-        """Drag & Drop Handler"""
-        files = self.tk.splitlist(event.data)
-        for file_path in files:
-            # Bereinige den Pfad
-            file_path = file_path.strip('{}')
-            self.add_shortcut_from_path(file_path)
-    
     def add_shortcut_from_path(self, file_path):
         """Fügt eine Verknüpfung basierend auf einem Dateipfad hinzu"""
         path = Path(file_path)
         name = path.stem if path.is_file() else path.name
         
         # Icon basierend auf Dateityp
-        if path.suffix.lower() in ['.exe', '.msi']:
+        suffix = path.suffix.lower()
+        if suffix in ['.exe', '.msi']:
             icon = "⚙️"
-        elif path.suffix.lower() in ['.lnk']:
+        elif suffix in ['.lnk']:
             icon = "🔗"
         elif path.is_dir():
             icon = "📁"
-        elif path.suffix.lower() in ['.txt', '.doc', '.docx', '.pdf']:
+        elif suffix in ['.txt', '.doc', '.docx', '.pdf']:
             icon = "📄"
-        elif path.suffix.lower() in ['.jpg', '.png', '.gif', '.bmp']:
+        elif suffix in ['.jpg', '.png', '.gif', '.bmp', '.jpeg']:
             icon = "🖼️"
-        elif path.suffix.lower() in ['.mp3', '.wav', '.flac']:
+        elif suffix in ['.mp3', '.wav', '.flac', '.ogg']:
             icon = "🎵"
-        elif path.suffix.lower() in ['.mp4', '.avi', '.mkv']:
+        elif suffix in ['.mp4', '.avi', '.mkv', '.mov']:
             icon = "🎬"
+        elif suffix in ['.zip', '.rar', '.7z']:
+            icon = "📦"
+        elif suffix in ['.py', '.js', '.html', '.css']:
+            icon = "💻"
         else:
             icon = "📄"
         
@@ -483,21 +482,20 @@ class AddCategoryDialog(ctk.CTkToplevel):
         self.destroy()
 
 
-class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
-    """Hauptanwendung"""
+class QuickLaunchApp:
+    """Hauptanwendung mit Drag & Drop Support"""
     
     def __init__(self):
-        super().__init__()
-        
-        # CustomTkinter Styling für TkinterDnD.Tk
+        # Erstelle das Hauptfenster mit TkinterDnD wenn verfügbar
         if TKDND_AVAILABLE:
-            ctk.set_appearance_mode("dark")
-            ctk.set_default_color_theme("blue")
+            self.root = TkinterDnD.Tk()
+        else:
+            self.root = tk.Tk()
         
-        self.title("QuickLaunch - Schnellstart")
-        self.geometry("700x500")
-        self.minsize(500, 400)
-        self.configure(fg_color="#1a1a1a")
+        self.root.title("QuickLaunch - Schnellstart")
+        self.root.geometry("700x500")
+        self.root.minsize(500, 400)
+        self.root.configure(bg="#1a1a1a")
         
         # Daten laden
         self.config_data = self._load_config()
@@ -507,8 +505,8 @@ class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
         
         # Drag & Drop aktivieren
         if TKDND_AVAILABLE:
-            self.drop_target_register(DND_FILES)
-            self.dnd_bind("<<Drop>>", self._on_global_drop)
+            self.root.drop_target_register(DND_FILES)
+            self.root.dnd_bind("<<Drop>>", self._on_global_drop)
     
     def _load_config(self):
         if CONFIG_FILE.exists():
@@ -527,8 +525,12 @@ class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
             json.dump(self.config_data, f, indent=2, ensure_ascii=False)
     
     def _create_ui(self):
+        # Hauptcontainer mit CTk
+        self.main_frame = ctk.CTkFrame(self.root, fg_color="#1a1a1a")
+        self.main_frame.pack(fill="both", expand=True)
+        
         # Header
-        header = ctk.CTkFrame(self, fg_color="#0f0f0f", height=60)
+        header = ctk.CTkFrame(self.main_frame, fg_color="#0f0f0f", height=60)
         header.pack(fill="x")
         header.pack_propagate(False)
         
@@ -570,7 +572,7 @@ class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
         
         # Tabview für Kategorien
         self.tabview = ctk.CTkTabview(
-            self,
+            self.main_frame,
             fg_color="#1a1a1a",
             segmented_button_fg_color="#2b2b2b",
             segmented_button_selected_color="#0078d4",
@@ -583,13 +585,14 @@ class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
         self._create_tabs()
         
         # Status Bar
-        status_bar = ctk.CTkFrame(self, fg_color="#0f0f0f", height=30)
+        status_bar = ctk.CTkFrame(self.main_frame, fg_color="#0f0f0f", height=30)
         status_bar.pack(fill="x", side="bottom")
         status_bar.pack_propagate(False)
         
+        dnd_status = "✅ Drag & Drop aktiv" if TKDND_AVAILABLE else "❌ Drag & Drop nicht verfügbar (pip install tkinterdnd2)"
         self.status_label = ctk.CTkLabel(
             status_bar,
-            text="Tipp: Dateien per Drag & Drop hinzufügen | Rechtsklick für Optionen",
+            text=f"{dnd_status} | Rechtsklick für Optionen",
             font=("Segoe UI", 10),
             text_color="#666666"
         )
@@ -603,10 +606,10 @@ class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
             self.category_tabs[cat["name"]] = category_tab
     
     def _show_add_dialog(self):
-        AddDialog(self, self._add_shortcut)
+        AddDialog(self.main_frame, self._add_shortcut)
     
     def _show_add_category_dialog(self):
-        AddCategoryDialog(self, self._add_category)
+        AddCategoryDialog(self.main_frame, self._add_category)
     
     def _add_shortcut(self, name, path, shortcut_type, icon):
         current_tab = self.tabview.get()
@@ -647,17 +650,38 @@ class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
         self.tabview.set(name)
     
     def _on_global_drop(self, event):
+        """Verarbeitet Drag & Drop Events"""
         current_tab = self.tabview.get()
         if current_tab in self.category_tabs:
-            files = self.tk.splitlist(event.data)
+            # Dateipfade parsen (können in {} eingeschlossen sein oder Leerzeichen enthalten)
+            data = event.data
+            files = []
+            
+            # Windows-Format: Pfade können in {} sein wenn sie Leerzeichen haben
+            if '{' in data:
+                import re
+                # Finde alle Pfade in geschweiften Klammern
+                bracketed = re.findall(r'\{([^}]+)\}', data)
+                files.extend(bracketed)
+                # Entferne die gefundenen Pfade aus data
+                remaining = re.sub(r'\{[^}]+\}', '', data).strip()
+                if remaining:
+                    files.extend(remaining.split())
+            else:
+                files = data.split()
+            
             for file_path in files:
-                file_path = file_path.strip('{}')
-                self.category_tabs[current_tab].add_shortcut_from_path(file_path)
+                file_path = file_path.strip()
+                if file_path and os.path.exists(file_path):
+                    self.category_tabs[current_tab].add_shortcut_from_path(file_path)
+    
+    def run(self):
+        self.root.mainloop()
 
 
 def main():
     app = QuickLaunchApp()
-    app.mainloop()
+    app.run()
 
 
 if __name__ == "__main__":
