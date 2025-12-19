@@ -505,12 +505,10 @@ class QuickLaunchApp(ctk.CTk if not TKDND_AVAILABLE else TkinterDnD.Tk):
         
         self._create_ui()
         
-        # Drag & Drop aktivieren (TkDND)
-        try:
-            self.drop_target_register("DND_Files")
+        # Drag & Drop aktivieren
+        if TKDND_AVAILABLE:
+            self.drop_target_register(DND_FILES)
             self.dnd_bind("<<Drop>>", self._on_global_drop)
-        except:
-            pass  # TkDND nicht verfügbar
     
     def _load_config(self):
         if CONFIG_FILE.exists():
