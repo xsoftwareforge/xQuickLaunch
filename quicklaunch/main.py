@@ -482,20 +482,16 @@ class AddCategoryDialog(ctk.CTkToplevel):
         self.destroy()
 
 
-class QuickLaunchApp:
+class QuickLaunchApp(ctk.CTk):
     """Hauptanwendung mit Drag & Drop Support"""
     
     def __init__(self):
-        # Erstelle das Hauptfenster mit TkinterDnD wenn verfügbar
-        if TKDND_AVAILABLE:
-            self.root = TkinterDnD.Tk()
-        else:
-            self.root = tk.Tk()
+        super().__init__()
         
-        self.root.title("QuickLaunch - Schnellstart")
-        self.root.geometry("700x500")
-        self.root.minsize(500, 400)
-        self.root.configure(bg="#1a1a1a")
+        self.title("QuickLaunch - Schnellstart")
+        self.geometry("700x500")
+        self.minsize(500, 400)
+        self.configure(fg_color="#1a1a1a")
         
         # Daten laden
         self.config_data = self._load_config()
@@ -503,10 +499,29 @@ class QuickLaunchApp:
         
         self._create_ui()
         
-        # Drag & Drop aktivieren
+        # Drag & Drop aktivieren - registriere auf dem unterliegenden Tk-Widget
         if TKDND_AVAILABLE:
-            self.root.drop_target_register(DND_FILES)
-            self.root.dnd_bind("<<Drop>>", self._on_global_drop)
+            try:
+                # Lade TkDND Erweiterung manuell
+                self.tk.eval('package require tkdnd')
+                self._setup_dnd()
+            except tk.TclError as e:
+                print(f"TkDND konnte nicht geladen werden: {e}")
+                global TKDND_AVAILABLE
+                TKDND_AVAILABLE = False
+    
+    def _setup_dnd(self):
+        """Richtet Drag & Drop ein"""
+        # Registriere das Fenster als Drop-Target
+        self.tk.call('tkdnd::drop_target', 'register', self._w, 'DND_Files')
+        # Binde das Drop-Event
+        self.bind('<<Drop>>', self._on_global_drop)
+        # Alternativ über Tcl direkt
+        self.tk.eval(f'''
+            bind {self._w} <<Drop>> {{}}
+        ''')
+        self.drop_target_register(DND_FILES)
+        self.dnd_bind('<<Drop>>', self._on_global_drop)
     
     def _load_config(self):
         if CONFIG_FILE.exists():
