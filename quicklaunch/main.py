@@ -154,12 +154,7 @@ class CategoryTab(ctk.CTkFrame):
         self.grid_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.grid_frame.pack(fill="both", expand=True)
         
-        # Drop-Zone aktivieren (falls TkDND verfügbar)
-        try:
-            self.scroll_frame.drop_target_register("DND_Files")
-            self.scroll_frame.dnd_bind("<<Drop>>", self._on_drop)
-        except (AttributeError, tk.TclError):
-            pass  # TkDND nicht verfügbar
+        # Drop-Zone wird in der Hauptklasse registriert
         
         self._render_tiles()
     
