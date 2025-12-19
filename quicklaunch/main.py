@@ -691,7 +691,7 @@ class QuickLaunchApp(ctk.CTk):
                     self.category_tabs[current_tab].add_shortcut_from_path(file_path)
     
     def run(self):
-        self.root.mainloop()
+        self.mainloop()
 
 
 def main():
