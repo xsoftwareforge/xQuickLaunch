@@ -1,0 +1,28 @@
+{
+  "categories": [
+    {
+      "name": "Allgemein",
+      "shortcuts": [
+        {
+          "name": "Google",
+          "path": "https://www.google.com",
+          "type": "url",
+          "icon": "🌐"
+        }
+      ]
+    },
+    {
+      "name": "Arbeit",
+      "shortcuts": []
+    },
+    {
+      "name": "Tools",
+      "shortcuts": []
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "columns": 4,
+    "tile_size": 100
+  }
+}
