@@ -541,7 +541,7 @@ class QuickLaunchApp(ctk.CTk):
     
     def _create_ui(self):
         # Hauptcontainer mit CTk
-        self.main_frame = ctk.CTkFrame(self.root, fg_color="#1a1a1a")
+        self.main_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
         self.main_frame.pack(fill="both", expand=True)
         
         # Header
