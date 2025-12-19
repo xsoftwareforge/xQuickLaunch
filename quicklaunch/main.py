@@ -13,7 +13,15 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox
 import tkinter as tk
-from tkinter import dnd
+
+# TkinterDnD für Drag & Drop
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    TKDND_AVAILABLE = True
+except ImportError:
+    TKDND_AVAILABLE = False
+    print("Hinweis: tkinterdnd2 nicht installiert. Drag & Drop deaktiviert.")
+    print("Installiere mit: pip install tkinterdnd2")
 
 # Pfad zur Konfigurationsdatei
 CONFIG_FILE = Path(__file__).parent / "config.json"
