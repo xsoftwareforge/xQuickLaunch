@@ -14,15 +14,6 @@ from pathlib import Path
 from tkinter import filedialog, messagebox
 import tkinter as tk
 
-# TkinterDnD für Drag & Drop
-try:
-    from tkinterdnd2 import DND_FILES, TkinterDnD
-    TKDND_AVAILABLE = True
-except ImportError:
-    TKDND_AVAILABLE = False
-    print("Hinweis: tkinterdnd2 nicht installiert. Drag & Drop deaktiviert.")
-    print("Installiere mit: pip install tkinterdnd2")
-
 # Pfad zur Konfigurationsdatei
 CONFIG_FILE = Path(__file__).parent / "config.json"
 
@@ -188,7 +179,7 @@ class CategoryTab(ctk.CTkFrame):
         if not shortcuts:
             empty_label = ctk.CTkLabel(
                 self.grid_frame,
-                text="Ziehe Dateien/Ordner hierher\noder klicke auf '+' um hinzuzufügen",
+                text="Klicke auf '+ Hinzufügen' oder '📂 Dateien'\num Verknüpfungen hinzuzufügen",
                 font=("Segoe UI", 14),
                 text_color="#666666"
             )
@@ -483,7 +474,7 @@ class AddCategoryDialog(ctk.CTkToplevel):
 
 
 class QuickLaunchApp(ctk.CTk):
-    """Hauptanwendung mit Drag & Drop Support"""
+    """Hauptanwendung"""
     
     def __init__(self):
         super().__init__()
@@ -498,30 +489,6 @@ class QuickLaunchApp(ctk.CTk):
         self.category_tabs = {}
         
         self._create_ui()
-        
-        # Drag & Drop aktivieren - registriere auf dem unterliegenden Tk-Widget
-        if TKDND_AVAILABLE:
-            try:
-                # Lade TkDND Erweiterung manuell
-                self.tk.eval('package require tkdnd')
-                self._setup_dnd()
-            except tk.TclError as e:
-                print(f"TkDND konnte nicht geladen werden: {e}")
-                global TKDND_AVAILABLE
-                TKDND_AVAILABLE = False
-    
-    def _setup_dnd(self):
-        """Richtet Drag & Drop ein"""
-        # Registriere das Fenster als Drop-Target
-        self.tk.call('tkdnd::drop_target', 'register', self._w, 'DND_Files')
-        # Binde das Drop-Event
-        self.bind('<<Drop>>', self._on_global_drop)
-        # Alternativ über Tcl direkt
-        self.tk.eval(f'''
-            bind {self._w} <<Drop>> {{}}
-        ''')
-        self.drop_target_register(DND_FILES)
-        self.dnd_bind('<<Drop>>', self._on_global_drop)
     
     def _load_config(self):
         if CONFIG_FILE.exists():
@@ -540,12 +507,8 @@ class QuickLaunchApp(ctk.CTk):
             json.dump(self.config_data, f, indent=2, ensure_ascii=False)
     
     def _create_ui(self):
-        # Hauptcontainer mit CTk
-        self.main_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
-        self.main_frame.pack(fill="both", expand=True)
-        
         # Header
-        header = ctk.CTkFrame(self.main_frame, fg_color="#0f0f0f", height=60)
+        header = ctk.CTkFrame(self, fg_color="#0f0f0f", height=60)
         header.pack(fill="x")
         header.pack_propagate(False)
         
@@ -560,6 +523,19 @@ class QuickLaunchApp(ctk.CTk):
         # Header Buttons
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=10)
+        
+        # Dateien hinzufügen Button
+        self.add_files_btn = ctk.CTkButton(
+            btn_frame,
+            text="📂 Dateien",
+            width=90,
+            height=32,
+            font=("Segoe UI", 12),
+            fg_color="#2d7d32",
+            hover_color="#388e3c",
+            command=self._add_files
+        )
+        self.add_files_btn.pack(side="left", padx=5)
         
         self.add_btn = ctk.CTkButton(
             btn_frame,
@@ -587,7 +563,7 @@ class QuickLaunchApp(ctk.CTk):
         
         # Tabview für Kategorien
         self.tabview = ctk.CTkTabview(
-            self.main_frame,
+            self,
             fg_color="#1a1a1a",
             segmented_button_fg_color="#2b2b2b",
             segmented_button_selected_color="#0078d4",
@@ -600,14 +576,13 @@ class QuickLaunchApp(ctk.CTk):
         self._create_tabs()
         
         # Status Bar
-        status_bar = ctk.CTkFrame(self.main_frame, fg_color="#0f0f0f", height=30)
+        status_bar = ctk.CTkFrame(self, fg_color="#0f0f0f", height=30)
         status_bar.pack(fill="x", side="bottom")
         status_bar.pack_propagate(False)
         
-        dnd_status = "✅ Drag & Drop aktiv" if TKDND_AVAILABLE else "❌ Drag & Drop nicht verfügbar (pip install tkinterdnd2)"
         self.status_label = ctk.CTkLabel(
             status_bar,
-            text=f"{dnd_status} | Rechtsklick für Optionen",
+            text="📂 Dateien Button zum Hinzufügen | Rechtsklick für Optionen",
             font=("Segoe UI", 10),
             text_color="#666666"
         )
@@ -620,11 +595,28 @@ class QuickLaunchApp(ctk.CTk):
             category_tab.pack(fill="both", expand=True)
             self.category_tabs[cat["name"]] = category_tab
     
+    def _add_files(self):
+        """Öffnet Datei-Dialog zum Hinzufügen mehrerer Dateien"""
+        files = filedialog.askopenfilenames(
+            title="Dateien auswählen",
+            filetypes=[
+                ("Alle Dateien", "*.*"),
+                ("Programme", "*.exe;*.msi"),
+                ("Verknüpfungen", "*.lnk"),
+                ("Dokumente", "*.pdf;*.doc;*.docx;*.txt"),
+            ]
+        )
+        
+        current_tab = self.tabview.get()
+        if files and current_tab in self.category_tabs:
+            for file_path in files:
+                self.category_tabs[current_tab].add_shortcut_from_path(file_path)
+    
     def _show_add_dialog(self):
-        AddDialog(self.main_frame, self._add_shortcut)
+        AddDialog(self, self._add_shortcut)
     
     def _show_add_category_dialog(self):
-        AddCategoryDialog(self.main_frame, self._add_category)
+        AddCategoryDialog(self, self._add_category)
     
     def _add_shortcut(self, name, path, shortcut_type, icon):
         current_tab = self.tabview.get()
@@ -663,40 +655,11 @@ class QuickLaunchApp(ctk.CTk):
         
         # Zum neuen Tab wechseln
         self.tabview.set(name)
-    
-    def _on_global_drop(self, event):
-        """Verarbeitet Drag & Drop Events"""
-        current_tab = self.tabview.get()
-        if current_tab in self.category_tabs:
-            # Dateipfade parsen (können in {} eingeschlossen sein oder Leerzeichen enthalten)
-            data = event.data
-            files = []
-            
-            # Windows-Format: Pfade können in {} sein wenn sie Leerzeichen haben
-            if '{' in data:
-                import re
-                # Finde alle Pfade in geschweiften Klammern
-                bracketed = re.findall(r'\{([^}]+)\}', data)
-                files.extend(bracketed)
-                # Entferne die gefundenen Pfade aus data
-                remaining = re.sub(r'\{[^}]+\}', '', data).strip()
-                if remaining:
-                    files.extend(remaining.split())
-            else:
-                files = data.split()
-            
-            for file_path in files:
-                file_path = file_path.strip()
-                if file_path and os.path.exists(file_path):
-                    self.category_tabs[current_tab].add_shortcut_from_path(file_path)
-    
-    def run(self):
-        self.mainloop()
 
 
 def main():
     app = QuickLaunchApp()
-    app.run()
+    app.mainloop()
 
 
 if __name__ == "__main__":
