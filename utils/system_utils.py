@@ -1,8 +1,11 @@
 import psutil
 import sys
 import os
-import winreg
 from pathlib import Path
+
+# Conditional import for winreg
+if sys.platform == 'win32':
+    import winreg
 
 def get_system_stats():
     """Returns a tuple (cpu_percent, ram_percent)"""
@@ -18,6 +21,9 @@ def set_autostart(enable: bool, app_name="QuickLaunch"):
     Sets or removes the autostart registry key for the current application.
     Works for both Python script and frozen executable.
     """
+    if sys.platform != 'win32':
+        return False
+
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     
     # Determine the path to the executable/script
@@ -55,6 +61,9 @@ def set_autostart(enable: bool, app_name="QuickLaunch"):
 
 def check_autostart(app_name="QuickLaunch") -> bool:
     """Checks if autostart is currently enabled via registry"""
+    if sys.platform != 'win32':
+        return False
+
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ)

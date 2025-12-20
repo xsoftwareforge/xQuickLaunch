@@ -1,0 +1,70 @@
+name: Build Application
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller xQuickLaunch.spec
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: xQuickLaunch-Windows
+        path: dist/xQuickLaunch.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-tk
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build with PyInstaller
+      # Linux specific build command since the .spec file might have windows specific settings
+      # Using --onefile to create a single executable
+      # Using --windowed to hide the console (if applicable)
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --name "xQuickLaunch" --add-data "ui:ui" --add-data "icons:icons"  main.py
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: xQuickLaunch-Linux
+        path: dist/xQuickLaunch
