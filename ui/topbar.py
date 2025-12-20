@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import sys
 import time
 from datetime import datetime
 import tkinter as tk
@@ -38,7 +39,8 @@ class Topbar(ctk.CTkToplevel):
         # Using a distinct color key for transparency
         self.transparent_color = "#000001"
         self.configure(fg_color=self.transparent_color)
-        self.attributes("-transparentcolor", self.transparent_color)
+        if sys.platform.startswith("win"):
+            self.attributes("-transparentcolor", self.transparent_color)
         
         self.attributes("-topmost", self.config_data["settings"].get("topbar_always_on_top", True))
         

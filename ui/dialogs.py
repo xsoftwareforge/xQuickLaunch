@@ -20,6 +20,7 @@ class EditDialog(ctk.CTkToplevel):
         
         # Zentrieren
         self.transient(master)
+        self.wait_visibility()
         self.grab_set()
         
         # Name
@@ -90,6 +91,7 @@ class AddDialog(ctk.CTkToplevel):
         self.resizable(False, False)
         
         self.transient(master)
+        self.wait_visibility()
         self.grab_set()
         
         # Typ-Auswahl
@@ -205,6 +207,7 @@ class AddCategoryDialog(ctk.CTkToplevel):
         self.resizable(False, False)
         
         self.transient(master)
+        self.wait_visibility()
         self.grab_set()
         
         ctk.CTkLabel(self, text="Kategorie-Name:", font=("Segoe UI", 12)).pack(pady=(20, 5), padx=20, anchor="w")
@@ -250,6 +253,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.resizable(False, False)
         
         self.transient(master)
+        self.wait_visibility()
         self.grab_set()
         
         # Grid Einstellungen

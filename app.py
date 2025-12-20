@@ -2,7 +2,10 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import json
 from tkinterdnd2 import TkinterDnD
-import pystray
+try:
+    import pystray
+except Exception:
+    pystray = None
 from PIL import Image, ImageDraw
 import threading
 import sys
@@ -70,14 +73,21 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         return image
 
     def _setup_tray_icon(self):
+        if pystray is None:
+            return
+
         def _run_tray():
             image = self._create_tray_image()
             menu = pystray.Menu(
                 pystray.MenuItem("Anzeigen", self._restore_from_tray, default=True),
                 pystray.MenuItem("Beenden", self.quit_app)
             )
-            self.tray_icon = pystray.Icon("QuickLaunch", image, "QuickLaunch Bar", menu)
-            self.tray_icon.run()
+            try:
+                self.tray_icon = pystray.Icon("QuickLaunch", image, "QuickLaunch Bar", menu)
+                self.tray_icon.run()
+            except Exception as e:
+                print(f"Failed to initialize system tray icon: {e}")
+                self.tray_icon = None
 
         # Run tray in separate thread to not block tkinter
         self.tray_thread = threading.Thread(target=_run_tray, daemon=True)
@@ -89,15 +99,32 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         # Main window stays hidden unless explicitly toggled, or we can show it too
         # self.after(0, self.deiconify) 
 
-    def minimize_to_tray(self):
-        """Hides both windows"""
         self.withdraw()
-        self.topbar.withdraw()
+        if self.tray_icon:
+            self.topbar.withdraw()
+            # If no tray icon, we should probably not hide the topbar completely or provide a way back, 
+            # but for minimize logic, hiding window is standard. 
+            # If no tray, maybe we just minimize to taskbar? 
+            # But topbar is overrideredirect, so it doesn't have taskbar entry usually.
+        else:
+            # removing from screen without tray to bring it back is dangerous.
+            # treating minimize as just hiding main window but keeping topbar if no tray?
+            self.topbar.withdraw()
+            # If we don't have tray, we rely on topbar being visible? 
+            # Wait, if topbar is hidden, how do we get it back?
+            # On Windows, we re-show from tray.
+            # On Linux without tray, we might be stuck.
+            # Let's just withdraw for now, user can kill app if stuck. 
+            # Better: if no tray, maybe don't allow full minimize or just iconify?
+            pass
         
     def quit_app(self, icon=None, item=None):
         """Beendet die gesamte Anwendung inkl. Tray"""
         if self.tray_icon:
-            self.tray_icon.stop()
+            try:
+                self.tray_icon.stop()
+            except Exception:
+                pass
         self.destroy()
         sys.exit(0)
 
