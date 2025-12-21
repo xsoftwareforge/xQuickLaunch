@@ -34,21 +34,38 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 print(f"Warning: Failed to inject tkdnd path: {e}")
 
         try:
-            # FreeBSD Hack: Conflicting requirements!
-            # 1. 'psutil' needs sys.platform='freebsd' (loaded during imports)
-            # 2. 'tkinterdnd2' needs sys.platform='linux' (checked here at runtime)
-            # We momentarily mock linux JUST for this call.
+            # FreeBSD Fix: Override the internal _require function to manually load tkdnd
+            # This avoids the strict platform check in tkinterdnd2
             import sys
-            original_platform = sys.platform
-            if original_platform.startswith('freebsd'):
-                sys.platform = 'linux'
+            import os
+            if sys.platform.startswith('freebsd'):
+                def _require_freebsd(tkroot):
+                    # Try env var first, then standard ports location
+                    paths = [
+                        os.environ.get('TKDND_LIBRARY'),
+                        '/usr/local/lib/tkdnd2.8',
+                        '/usr/local/lib/tkdnd2.9'
+                    ]
+                    found = False
+                    for path in paths:
+                        if path and os.path.exists(path):
+                            print(f"FreeBSD: injecting auto_path {path}")
+                            tkroot.tk.call('lappend', 'auto_path', path)
+                            found = True
+                            break
+                    
+                    if not found:
+                        print("Warning: Could not find tkdnd library path. Set TKDND_LIBRARY env var.")
+                        
+                    return tkroot.tk.call('package', 'require', 'tkdnd')
 
-            try:
-                self.TkdndVersion = TkinterDnD._require(self)
-                self.dnd_enabled = True
-            finally:
-                # Critical: Must restore immediately so other calls don't break
-                sys.platform = original_platform
+                # Critical: We must patch the _require function on the class/module
+                # Depending on how it's imported, it might be an instance method or static
+                # In tkinterdnd2 source, _require is a static function that takes the widget
+                TkinterDnD._require = _require_freebsd
+
+            self.TkdndVersion = TkinterDnD._require(self)
+            self.dnd_enabled = True
 
         except (RuntimeError, ImportError, Exception) as e:
             print(f"Drag & Drop not supported: {e}")
