@@ -226,7 +226,7 @@ class CategoryTab(ctk.CTkFrame):
             icon = "🎬"
         elif suffix in ['.zip', '.rar', '.7z']:
             icon = "📦"
-        elif suffix in ['.py', '.js', '.html', '.css']:
+        elif suffix in ['.py', '.js', '.html', '.css', '.json', '.xml', '.yaml', '.yml']:
             icon = "💻"
         else:
             icon = "📄"

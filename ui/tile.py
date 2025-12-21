@@ -105,9 +105,9 @@ class ShortcutTile(ctk.CTkFrame):
                 if sys.platform == "win32":
                     os.startfile(path)
                 elif sys.platform == "darwin":
-                    subprocess.run(["open", path])
+                    subprocess.Popen(["open", path])
                 else:
-                    subprocess.run(["xdg-open", path])
+                    subprocess.Popen(["xdg-open", path])
         except Exception as e:
             messagebox.showerror("Fehler", f"Konnte nicht öffnen:\n{e}")
     
