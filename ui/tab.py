@@ -22,8 +22,14 @@ class CategoryTab(ctk.CTkFrame):
         self.configure(fg_color="transparent")
         
         # Drag & Drop
-        self.drop_target_register(DND_FILES)
-        self.dnd_bind('<<Drop>>', self._on_drop)
+        # Check if DnD is enabled in the main app
+        try:
+             # winfo_toplevel() returns the main window (QuickLaunchApp)
+            if getattr(self.winfo_toplevel(), "dnd_enabled", False):
+                self.drop_target_register(DND_FILES)
+                self.dnd_bind('<<Drop>>', self._on_drop)
+        except Exception:
+            pass
         
         # Scrollbarer Bereich
         self.scroll_frame = ctk.CTkScrollableFrame(

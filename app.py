@@ -21,7 +21,12 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
     
     def __init__(self):
         super().__init__()
-        self.TkdndVersion = TkinterDnD._require(self)
+        try:
+            self.TkdndVersion = TkinterDnD._require(self)
+            self.dnd_enabled = True
+        except (RuntimeError, ImportError, Exception) as e:
+            print(f"Drag & Drop not supported: {e}")
+            self.dnd_enabled = False
         
         setup_theme()
         
