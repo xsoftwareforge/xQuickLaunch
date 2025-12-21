@@ -21,6 +21,18 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
     
     def __init__(self):
         super().__init__()
+        
+        # Support for FreeBSD/Linux Manual TkDND Path
+        import os
+        tkdnd_path = os.environ.get('TKDND_LIBRARY')
+        if tkdnd_path:
+            try:
+                # Add the library path to Tcl's auto_path so 'package require tkdnd' can find it
+                self.tk.eval(f'lappend auto_path {{{tkdnd_path}}}')
+                print(f"Injected tkdnd path: {tkdnd_path}")
+            except Exception as e:
+                print(f"Warning: Failed to inject tkdnd path: {e}")
+
         try:
             self.TkdndVersion = TkinterDnD._require(self)
             self.dnd_enabled = True
