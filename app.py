@@ -34,8 +34,22 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 print(f"Warning: Failed to inject tkdnd path: {e}")
 
         try:
-            self.TkdndVersion = TkinterDnD._require(self)
-            self.dnd_enabled = True
+            # FreeBSD Hack: Conflicting requirements!
+            # 1. 'psutil' needs sys.platform='freebsd' (loaded during imports)
+            # 2. 'tkinterdnd2' needs sys.platform='linux' (checked here at runtime)
+            # We momentarily mock linux JUST for this call.
+            import sys
+            original_platform = sys.platform
+            if original_platform.startswith('freebsd'):
+                sys.platform = 'linux'
+
+            try:
+                self.TkdndVersion = TkinterDnD._require(self)
+                self.dnd_enabled = True
+            finally:
+                # Critical: Must restore immediately so other calls don't break
+                sys.platform = original_platform
+
         except (RuntimeError, ImportError, Exception) as e:
             print(f"Drag & Drop not supported: {e}")
             self.dnd_enabled = False
