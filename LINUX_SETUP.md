@@ -34,7 +34,7 @@ To enable Drag & Drop functionality on Linux and FreeBSD, you need to install th
 
 1.  **Install the library**:
     ```bash
-    sudo pkg install tk-dnd
+    sudo pkg install tkdnd
     ```
 
 ## Troubleshooting
