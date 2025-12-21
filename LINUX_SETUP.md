@@ -39,6 +39,33 @@ To enable Drag & Drop functionality on Linux and FreeBSD, you need to install th
 
 ## Troubleshooting
 
+### "Platform not supported" (FreeBSD/Linux)
+
+If you see `Drag & Drop not supported: Platform not supported.`, the python wrapper cannot find the installed `tkdnd` library.
+
+**Fix:**
+1.  Find where `tkdnd` is installed:
+    ```bash
+    pkg info -l tkdnd | grep libtkdnd
+    # Example output: /usr/local/lib/tkdnd2.9/libtkdnd2.9.so
+    ```
+2.  Set the `TKDND_LIBRARY` environment variable to the **directory** containing that file.
+    ```bash
+    export TKDND_LIBRARY="/usr/local/lib/tkdnd2.9"
+    python main.py
+    ```
+
+### Font Warning (FreeBSD)
+`Preferred drawing method 'font_shapes' can not be used...`
+
+This means CustomTkinter cannot load its font files.
+**Fix:**
+Ensure the font files in `customtkinter` package are readable, or try installing standard fonts:
+```bash
+sudo pkg install xorg-fonts-truetype
+```
+Also ensure your user has read permissions to the python site-packages if installed systematically.
+
 If the application still says "Drag & Drop not supported", you may need to help the python library find the installed `tkdnd` library.
 
 1.  Find where `tkdnd` was installed.
