@@ -1,6 +1,26 @@
-# Linux & FreeBSD Setup Guide
+## Prerequisites
 
-To enable Drag & Drop functionality on Linux and FreeBSD, you need to install the system-level `tk-dnd` library. The Python `tkinterdnd2` package requires this underlying library to function.
+This application uses `tkinter`.
+
+### Linux (Debian/Ubuntu/Mint)
+Usually installed by default or with python. If missing:
+```bash
+sudo apt install python3-tk
+```
+
+### FreeBSD
+FreeBSD does not include `tkinter` by default. You must install it manually.
+Make sure to match your python version (e.g., `py311` for Python 3.11).
+
+```bash
+sudo pkg install py311-tkinter
+# or for Python 3.9:
+# sudo pkg install py39-tkinter
+```
+
+## Enable Drag & Drop Support
+
+To enable Drag & Drop functionality on Linux and FreeBSD, you need to install the system-level `tk-dnd` library.
 
 ## Linux (Debian/Ubuntu/Mint)
 
