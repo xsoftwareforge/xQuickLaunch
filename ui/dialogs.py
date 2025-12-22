@@ -14,7 +14,7 @@ class EditDialog(ctk.CTkToplevel):
         self.refresh_callback = refresh_callback
         
         self.title("Verknüpfung bearbeiten")
-        self.geometry("400x300")
+        self.geometry("420x400")
         self.configure(fg_color="#1a1a1a")
         self.resizable(False, False)
         
@@ -24,48 +24,94 @@ class EditDialog(ctk.CTkToplevel):
         self.grab_set()
         
         # Name
-        ctk.CTkLabel(self, text="Name:", font=("Segoe UI", 12)).pack(pady=(20, 5), padx=20, anchor="w")
-        self.name_entry = ctk.CTkEntry(self, width=360, height=35)
+        ctk.CTkLabel(self, text="Name:", font=("Segoe UI", 12)).pack(pady=(15, 5), padx=20, anchor="w")
+        self.name_entry = ctk.CTkEntry(self, width=380, height=35)
         self.name_entry.insert(0, shortcut_data.get("name", ""))
         self.name_entry.pack(padx=20)
         
         # Pfad/URL
-        ctk.CTkLabel(self, text="Pfad/URL:", font=("Segoe UI", 12)).pack(pady=(15, 5), padx=20, anchor="w")
-        self.path_entry = ctk.CTkEntry(self, width=360, height=35)
+        ctk.CTkLabel(self, text="Pfad/URL:", font=("Segoe UI", 12)).pack(pady=(10, 5), padx=20, anchor="w")
+        self.path_entry = ctk.CTkEntry(self, width=380, height=35)
         self.path_entry.insert(0, shortcut_data.get("path", ""))
         self.path_entry.pack(padx=20)
         
-        # Icon
-        ctk.CTkLabel(self, text="Icon (Emoji):", font=("Segoe UI", 12)).pack(pady=(15, 5), padx=20, anchor="w")
-        self.icon_entry = ctk.CTkEntry(self, width=100, height=35)
-        self.icon_entry.insert(0, shortcut_data.get("icon", "📁"))
-        self.icon_entry.pack(padx=20, anchor="w")
+        # Emoji & Bild Container
+        icon_wrapper = ctk.CTkFrame(self, fg_color="transparent")
+        icon_wrapper.pack(fill="x", padx=20, pady=10)
+        
+        # Spalte 1: Emoji
+        left_frame = ctk.CTkFrame(icon_wrapper, fg_color="transparent")
+        left_frame.pack(side="left", fill="y", padx=(0, 10))
+        
+        ctk.CTkLabel(left_frame, text="Emoji:", font=("Segoe UI", 12)).pack(anchor="w", pady=(0, 5))
+        self.emoji_entry = ctk.CTkEntry(left_frame, width=60, height=35)
+        self.emoji_entry.insert(0, shortcut_data.get("icon", "📁"))
+        self.emoji_entry.pack(anchor="w")
+        
+        # Spalte 2: Bild Datei
+        right_frame = ctk.CTkFrame(icon_wrapper, fg_color="transparent")
+        right_frame.pack(side="left", fill="both", expand=True)
+
+        ctk.CTkLabel(right_frame, text="Bild-Datei (Optional):", font=("Segoe UI", 12)).pack(anchor="w", pady=(0, 5))
+        
+        img_row = ctk.CTkFrame(right_frame, fg_color="transparent")
+        img_row.pack(fill="x")
+        
+        self.image_entry = ctk.CTkEntry(img_row, width=200, height=35)
+        current_img = shortcut_data.get("image_path", "")
+        if current_img:
+             self.image_entry.insert(0, current_img)
+        self.image_entry.pack(side="left", fill="x", expand=True)
+        
+        ctk.CTkButton(
+            img_row, text="📂", width=50, height=35,
+            fg_color="#3d3d3d", hover_color="#4d4d4d",
+            command=self._browse_icon
+        ).pack(side="left", padx=(5, 0))
         
         # Buttons
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=20, fill="x", padx=20)
         
         ctk.CTkButton(
-            btn_frame, text="Abbrechen", width=100,
+            btn_frame, text="Abbrechen", width=140,
             fg_color="#3d3d3d", hover_color="#4d4d4d",
             command=self.destroy
         ).pack(side="right", padx=5)
         
         ctk.CTkButton(
-            btn_frame, text="Speichern", width=100,
+            btn_frame, text="Speichern", width=140,
             fg_color="#0078d4", hover_color="#1084d8",
             command=self._save
         ).pack(side="right", padx=5)
     
+    def _browse_icon(self):
+        file_types = [
+            ("Bilder", "*.png;*.jpg;*.jpeg;*.ico;*.gif"),
+            ("Alle Dateien", "*.*")
+        ]
+        path = filedialog.askopenfilename(filetypes=file_types)
+        if path:
+            self.image_entry.delete(0, "end")
+            self.image_entry.insert(0, path)
+
     def _save(self):
         new_path = self.path_entry.get()
-        if new_path != self.shortcut_data.get("path"):
-             if "image_path" in self.shortcut_data:
-                 del self.shortcut_data["image_path"]
-
+        emoji_val = self.emoji_entry.get().strip() or "📁"
+        image_val = self.image_entry.get().strip()
+        
+        import os
+        
         self.shortcut_data["name"] = self.name_entry.get()
         self.shortcut_data["path"] = new_path
-        self.shortcut_data["icon"] = self.icon_entry.get() or "📁"
+        self.shortcut_data["icon"] = emoji_val
+        
+        if image_val and os.path.exists(image_val):
+            self.shortcut_data["image_path"] = image_val
+        else:
+            # If empty or invalid, remove existing image_path to fallback to Emoji
+            if "image_path" in self.shortcut_data:
+                del self.shortcut_data["image_path"]
         
         # Typ automatisch erkennen
         if self.path_entry.get().startswith(("http://", "https://")):
@@ -86,7 +132,7 @@ class AddDialog(ctk.CTkToplevel):
         self.add_callback = add_callback
         
         self.title("Neue Verknüpfung")
-        self.geometry("420x380")
+        self.geometry("420x420")
         self.configure(fg_color="#1a1a1a")
         self.resizable(False, False)
         
@@ -128,30 +174,55 @@ class AddDialog(ctk.CTkToplevel):
         self.path_entry.pack(side="left")
         
         self.browse_btn = ctk.CTkButton(
-            path_frame, text="📂", width=40, height=35,
+            path_frame, text="📂", width=60, height=35,
             fg_color="#3d3d3d", hover_color="#4d4d4d",
             command=self._browse
         )
         self.browse_btn.pack(side="left", padx=(10, 0))
         
         # Icon
-        ctk.CTkLabel(self, text="Icon (Emoji):", font=("Segoe UI", 12)).pack(pady=(15, 5), padx=20, anchor="w")
-        self.icon_entry = ctk.CTkEntry(self, width=100, height=35)
-        self.icon_entry.insert(0, "📁")
-        self.icon_entry.pack(padx=20, anchor="w")
+        icon_wrapper = ctk.CTkFrame(self, fg_color="transparent")
+        icon_wrapper.pack(fill="x", padx=20, pady=10)
+        
+        # Spalte 1: Emoji
+        left_frame = ctk.CTkFrame(icon_wrapper, fg_color="transparent")
+        left_frame.pack(side="left", fill="y", padx=(0, 10))
+        
+        ctk.CTkLabel(left_frame, text="Emoji:", font=("Segoe UI", 12)).pack(anchor="w", pady=(0, 5))
+        self.emoji_entry = ctk.CTkEntry(left_frame, width=60, height=35)
+        self.emoji_entry.insert(0, "📁")
+        self.emoji_entry.pack(anchor="w")
+        
+        # Spalte 2: Bild Datei
+        right_frame = ctk.CTkFrame(icon_wrapper, fg_color="transparent")
+        right_frame.pack(side="left", fill="both", expand=True)
+
+        ctk.CTkLabel(right_frame, text="Bild-Datei (Optional):", font=("Segoe UI", 12)).pack(anchor="w", pady=(0, 5))
+        
+        img_row = ctk.CTkFrame(right_frame, fg_color="transparent")
+        img_row.pack(fill="x")
+        
+        self.image_entry = ctk.CTkEntry(img_row, width=200, height=35)
+        self.image_entry.pack(side="left", fill="x", expand=True)
+        
+        ctk.CTkButton(
+            img_row, text="📂", width=50, height=35,
+            fg_color="#3d3d3d", hover_color="#4d4d4d",
+            command=self._browse_icon
+        ).pack(side="left", padx=(5, 0))
         
         # Buttons
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=20, fill="x", padx=20)
         
         ctk.CTkButton(
-            btn_frame, text="Abbrechen", width=100,
+            btn_frame, text="Abbrechen", width=140,
             fg_color="#3d3d3d", hover_color="#4d4d4d",
             command=self.destroy
         ).pack(side="right", padx=5)
         
         ctk.CTkButton(
-            btn_frame, text="Hinzufügen", width=100,
+            btn_frame, text="Hinzufügen", width=140,
             fg_color="#0078d4", hover_color="#1084d8",
             command=self._add
         ).pack(side="right", padx=5)
@@ -161,14 +232,14 @@ class AddDialog(ctk.CTkToplevel):
             self.path_label.configure(text="URL:")
             self.path_entry.configure(placeholder_text="https://www.example.com")
             self.browse_btn.configure(state="disabled")
-            self.icon_entry.delete(0, "end")
-            self.icon_entry.insert(0, "🌐")
+            self.emoji_entry.delete(0, "end")
+            self.emoji_entry.insert(0, "🌐")
         else:
             self.path_label.configure(text="Pfad:")
             self.path_entry.configure(placeholder_text="C:\\Program Files\\...")
             self.browse_btn.configure(state="normal")
-            self.icon_entry.delete(0, "end")
-            self.icon_entry.insert(0, "📁")
+            self.emoji_entry.delete(0, "end")
+            self.emoji_entry.insert(0, "📁")
     
     def _browse(self):
         path = filedialog.askopenfilename()
@@ -179,18 +250,36 @@ class AddDialog(ctk.CTkToplevel):
             self.path_entry.insert(0, path)
             if not self.name_entry.get():
                 self.name_entry.insert(0, Path(path).stem)
+
+    def _browse_icon(self):
+        file_types = [
+            ("Bilder", "*.png;*.jpg;*.jpeg;*.ico;*.gif"),
+            ("Alle Dateien", "*.*")
+        ]
+        path = filedialog.askopenfilename(filetypes=file_types)
+        if path:
+            self.image_entry.delete(0, "end")
+            self.image_entry.insert(0, path)
     
     def _add(self):
         name = self.name_entry.get().strip()
         path = self.path_entry.get().strip()
-        icon = self.icon_entry.get().strip() or "📁"
+        emoji_val = self.emoji_entry.get().strip() or "📁"
+        image_val = self.image_entry.get().strip()
+        
         shortcut_type = self.type_var.get()
         
         if not name or not path:
             messagebox.showwarning("Fehler", "Name und Pfad/URL sind erforderlich!")
             return
+            
+        import os
+        image_path = None
         
-        self.add_callback(name, path, shortcut_type, icon)
+        if image_val and os.path.exists(image_val):
+            image_path = image_val
+
+        self.add_callback(name, path, shortcut_type, emoji_val, image_path=image_path)
         self.destroy()
 
 
@@ -219,13 +308,13 @@ class AddCategoryDialog(ctk.CTkToplevel):
         btn_frame.pack(pady=20, fill="x", padx=20)
         
         ctk.CTkButton(
-            btn_frame, text="Abbrechen", width=100,
+            btn_frame, text="Abbrechen", width=140,
             fg_color="#3d3d3d", hover_color="#4d4d4d",
             command=self.destroy
         ).pack(side="right", padx=5)
         
         ctk.CTkButton(
-            btn_frame, text="Erstellen", width=100,
+            btn_frame, text="Erstellen", width=140,
             fg_color="#0078d4", hover_color="#1084d8",
             command=self._add
         ).pack(side="right", padx=5)
@@ -349,13 +438,13 @@ class SettingsDialog(ctk.CTkToplevel):
         btn_frame.pack(side="bottom", pady=20, fill="x", padx=20)
         
         ctk.CTkButton(
-            btn_frame, text="Schließen", width=100,
+            btn_frame, text="Schließen", width=140,
             fg_color="#3d3d3d", hover_color="#4d4d4d",
             command=self.destroy
         ).pack(side="right", padx=5)
         
         ctk.CTkButton(
-            btn_frame, text="Speichern", width=100,
+            btn_frame, text="Speichern", width=140,
             fg_color=ThemeManager.get_color("primary"), 
             hover_color=ThemeManager.get_color("hover"),
             command=self._save

@@ -9,11 +9,11 @@ from pathlib import Path
 # Only define Windows structs if on Windows
 if sys.platform == "win32":
     class ICONINFO(ctypes.Structure):
-        _fields_ = [("fIcon", ctypes.c_bool),
+        _fields_ = [("fIcon", ctypes.c_int), # BOOL is int
                     ("xHotspot", wintypes.DWORD),
                     ("yHotspot", wintypes.DWORD),
-                    ("hbmMask", wintypes.HBITMAP),
-                    ("hbmColor", wintypes.HBITMAP)]
+                    ("hbmMask", ctypes.c_void_p), # HBITMAP
+                    ("hbmColor", ctypes.c_void_p)] # HBITMAP
 
     class BITMAPINFOHEADER(ctypes.Structure):
         _fields_ = [("biSize", wintypes.DWORD),
@@ -33,7 +33,7 @@ if sys.platform == "win32":
                     ("bmiColors", wintypes.DWORD * 3)]
 
     class SHFILEINFOW(ctypes.Structure):
-        _fields_ = [("hIcon", wintypes.HICON),
+        _fields_ = [("hIcon", ctypes.c_void_p), # HICON
                     ("iIcon", ctypes.c_int),
                     ("dwAttributes", wintypes.DWORD),
                     ("szDisplayName", ctypes.c_wchar * 260),
@@ -42,10 +42,62 @@ if sys.platform == "win32":
     shell32 = ctypes.windll.shell32
     user32 = ctypes.windll.user32
     gdi32 = ctypes.windll.gdi32
+    
+    # Define argtypes and restypes to prevent 64-bit overflow errors
+    
+    # SHGetFileInfoW
+    # DWORD_PTR SHGetFileInfoW(LPCWSTR pszPath, DWORD dwFileAttributes, SHFILEINFOW *psfi, UINT cbFileInfo, UINT uFlags);
+    shell32.SHGetFileInfoW.argtypes = [ctypes.c_wchar_p, wintypes.DWORD, ctypes.POINTER(SHFILEINFOW), wintypes.UINT, wintypes.UINT]
+    shell32.SHGetFileInfoW.restype = ctypes.c_void_p # DWORD_PTR is 64-bit
+
+    # GetIconInfo
+    # BOOL GetIconInfo(HICON hIcon, PICONINFO piconinfo);
+    user32.GetIconInfo.argtypes = [wintypes.HICON, ctypes.POINTER(ICONINFO)]
+    user32.GetIconInfo.restype = wintypes.BOOL
+    
+    # DestroyIcon
+    user32.DestroyIcon.argtypes = [wintypes.HICON]
+    user32.DestroyIcon.restype = wintypes.BOOL
+    
+    # GetDC
+    user32.GetDC.argtypes = [wintypes.HWND]
+    user32.GetDC.restype = wintypes.HDC
+    
+    # CreateCompatibleDC
+    gdi32.CreateCompatibleDC.argtypes = [wintypes.HDC]
+    gdi32.CreateCompatibleDC.restype = wintypes.HDC
+    
+    # CreateDIBSection
+    gdi32.CreateDIBSection.argtypes = [wintypes.HDC, ctypes.POINTER(BITMAPINFO), wintypes.UINT, ctypes.POINTER(ctypes.c_void_p), wintypes.HANDLE, wintypes.DWORD]
+    gdi32.CreateDIBSection.restype = wintypes.HBITMAP
+    
+    # SelectObject
+    gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
+    gdi32.SelectObject.restype = wintypes.HGDIOBJ # Returns HGDIOBJ (Handle)
+    
+    # DrawIconEx
+    # BOOL DrawIconEx(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, UINT istepIfAniCur, HBRUSH hbrFlickerFreeDraw, UINT diFlags);
+    user32.DrawIconEx.argtypes = [wintypes.HDC, ctypes.c_int, ctypes.c_int, wintypes.HICON, ctypes.c_int, ctypes.c_int, wintypes.UINT, wintypes.HBRUSH, wintypes.UINT]
+    user32.DrawIconEx.restype = wintypes.BOOL
+    
+    # GetDIBits
+    gdi32.GetDIBits.argtypes = [wintypes.HDC, wintypes.HBITMAP, wintypes.UINT, wintypes.UINT, ctypes.c_void_p, ctypes.POINTER(BITMAPINFO), wintypes.UINT]
+    gdi32.GetDIBits.restype = ctypes.c_int
+    
+    # ReleaseDC
+    user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
+    user32.ReleaseDC.restype = ctypes.c_int
+    
+    # DeleteDC
+    gdi32.DeleteDC.argtypes = [wintypes.HDC]
+    gdi32.DeleteDC.restype = wintypes.BOOL
+    
+    # DeleteObject
+    gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
+    gdi32.DeleteObject.restype = wintypes.BOOL
 
     SHGFI_ICON = 0x000000100
-    SHGFI_LARGEICON = 0x000000000 # Large icon is usually 32x32, we might want extra large but that requires specific API
-    # 0x0 is SHGFI_LARGEICON, 0x1 is SHGFI_SMALLICON
+    SHGFI_LARGEICON = 0x000000000
     
     DIB_RGB_COLORS = 0
 
@@ -53,13 +105,26 @@ def get_file_icon_path(file_path: str, cache_dir: str) -> str:
     """
     Extracts icon from file and saves to cache_dir.
     Returns path to cached png.
-    If extraction fails or not Windows, returns None or original path if it's an image.
     """
     path = Path(file_path)
     if not path.exists():
         return None
         
     # If it is already an image, return it
+    if path.suffix.lower() in ['.png', '.jpg', '.jpeg', '.ico']:
+        return str(path)
+        
+    # Resolve LNK if on Windows
+    # Import here to avoid circular dependency if possible, or assume it's available
+    from utils.system_utils import resolve_lnk_path
+    
+    # Try to resolve LNK to get original file for better icon
+    resolved_path = resolve_lnk_path(str(path))
+    if resolved_path != str(path):
+        # Update path to target for extraction
+        path = Path(resolved_path)
+    
+    # If resolved path is an image, return it
     if path.suffix.lower() in ['.png', '.jpg', '.jpeg', '.ico']:
         return str(path)
 
@@ -115,13 +180,6 @@ def get_file_icon_path(file_path: str, cache_dir: str) -> str:
         buffer_len = w * h * 4
         buffer = ctypes.create_string_buffer(buffer_len)
         
-        # GetDIBits
-        # Note: We should ideally use icon_info.hbmColor, but GetIconInfo might return a compatible bitmap, not a DIB.
-        # We need to draw the icon into a DIB to get the alpha channel properly if simpler methods fail, 
-        # but often GetDIBits on the hbmColor works if it exists. 
-        # However, icons often have complex masks. 
-        # Simplest valid way for simple extraction: DrawIconEx into a CreateDIBSection.
-        
         h_bitmap = gdi32.CreateDIBSection(mem_dc, ctypes.byref(bmi), DIB_RGB_COLORS, ctypes.byref(ctypes.c_void_p()), 0, 0)
         if not h_bitmap:
             user32.ReleaseDC(0, hdc)
@@ -131,7 +189,6 @@ def get_file_icon_path(file_path: str, cache_dir: str) -> str:
         old_bitmap = gdi32.SelectObject(mem_dc, h_bitmap)
         
         # Draw icon
-        # DrawIconEx(hdc, xLeft, yTop, hIcon, cxWidth, cyWidth, istepIfAniCur, hbrFlickerFreeDraw, diFlags)
         DI_NORMAL = 0x0003
         user32.DrawIconEx(mem_dc, 0, 0, hIcon, w, h, 0, 0, DI_NORMAL)
         

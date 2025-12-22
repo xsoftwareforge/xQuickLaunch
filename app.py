@@ -15,6 +15,7 @@ from config import load_config, save_config, setup_theme, ICONS_DIR
 from ui.tab import CategoryTab
 from ui.dialogs import AddDialog, AddCategoryDialog, SettingsDialog
 from utils.theme_manager import ThemeManager
+from utils.icon_utils import get_file_icon_path
 
 class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
     """Hauptanwendung"""
@@ -299,13 +300,6 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         )
         self.status_label.pack(side="left", padx=15, pady=5)
     
-    def _create_tabs(self):
-        for cat in self.config_data["categories"]:
-            tab = self.tabview.add(cat["name"])
-            category_tab = CategoryTab(tab, cat, self.config_data.get("settings", {}), self._save_config)
-            category_tab.pack(fill="both", expand=True)
-            self.category_tabs[cat["name"]] = category_tab
-    
     def _save_config(self):
         """Wrapper um config.save_config"""
         save_config(self.config_data)
@@ -347,11 +341,10 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
     def _show_add_category_dialog(self):
         AddCategoryDialog(self, self._add_category)
     
-    def _add_shortcut(self, name, path, shortcut_type, icon):
+    def _add_shortcut(self, name, path, shortcut_type, icon, image_path=None):
         current_tab = self.tabview.get()
         
-        image_path = None
-        if shortcut_type == "file":
+        if not image_path and shortcut_type == "file":
             try:
                 image_path = get_file_icon_path(path, str(ICONS_DIR))
             except Exception:
@@ -393,7 +386,7 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
         
         # Zum neuen Tab wechseln
         self.tabview.set(name)
-        
+
     # --- Neue Methoden für Topbar & Window Management ---
     
     def _on_close_window(self):
@@ -419,6 +412,130 @@ class QuickLaunchApp(ctk.CTk, TkinterDnD.DnDWrapper):
     def quit_app(self):
         """Beendet die gesamte Anwendung."""
         self.destroy()
+
+    def _bind_tab_context_menu(self, tab_name):
+        try:
+            # Access the internal button for the tab
+            # CTkTabview -> _segmented_button -> _buttons_dict (name -> CTkButton)
+            btn = self.tabview._segmented_button._buttons_dict.get(tab_name)
+            if btn:
+                # Bind Right Click
+                btn.bind("<Button-3>", lambda event, name=tab_name: self._show_tab_context_menu(event, name))
+        except Exception as e:
+            print(f"Failed to bind context menu to tab {tab_name}: {e}")
+
+    def _show_tab_context_menu(self, event, tab_name):
+        import tkinter as tk # Ensure tk is available
+        menu = tk.Menu(self, tearoff=0, bg="#2b2b2b", fg="white",
+                       activebackground="#0078d4", activeforeground="white")
+        
+        # Umbenennen
+        menu.add_command(label="✏️ Umbenennen", command=lambda: self._rename_category(tab_name))
+        
+        # Löschen (nur wenn mehr als 1 Tab)
+        if len(self.category_tabs) > 1:
+             menu.add_command(label="🗑️ Löschen", command=lambda: self._delete_category(tab_name))
+             
+        menu.tk_popup(event.x_root, event.y_root)
+        
+    def _rename_category(self, old_name):
+        dialog = ctk.CTkInputDialog(text=f"Neuer Name für '{old_name}':", title="Kategorie umbenennen")
+        # Center dialog roughly
+        dialog.geometry(f"+{self.winfo_x()+200}+{self.winfo_y()+200}")
+        new_name = dialog.get_input()
+        
+        if not new_name or new_name == old_name:
+            return
+            
+        # Check duplicate
+        for cat in self.config_data["categories"]:
+            if cat["name"].lower() == new_name.lower():
+                messagebox.showwarning("Fehler", "Dieser Name existiert bereits!")
+                return
+                
+        # 1. Update Data
+        category_data = None
+        for cat in self.config_data["categories"]:
+            if cat["name"] == old_name:
+                cat["name"] = new_name
+                category_data = cat
+                break
+        
+        if not category_data:
+            return
+
+        # 2. Update UI (Re-create Tab)
+        # We need to preserve the tab order? 
+        # CTkTabview doesn't support renaming easily. We have to remove and add.
+        # But removing an item from config list and re-appending changes order?
+        # No, we updated the name in-place in the list, so order in `config_data` is preserved.
+        # But `tabview` adds tabs at the end.
+        
+        # Full refresh strategy:
+        # Rebuild all tabs to keep order? Or just Accept it moves to end?
+        # User probably prefers order. Let's redraw all tabs.
+        
+        # Save current tab index/selection if possible?
+        # Actually, let's just do a full redraw of tabs to be safe and simple
+        
+        current_selection = self.tabview.get()
+        if current_selection == old_name:
+            current_selection = new_name
+            
+        # Clear tabs
+        # To avoid issues, let's remove them one by one or reconstruct the view?
+        # CTkTabview has no `clear()`. We have to `delete(name)`.
+        
+        # Note: Deleting tabs might trigger events or be slow.
+        # Let's try to just update the one tab if we didn't care about order, but we explicitly want renaming.
+        # If we re-render everything, it is cleanest.
+        
+        # Temporarily suppress saves during mass update if needed? No, just save once at end.
+        
+        # Delete all tabs from UI
+        # Removing from keys() while iterating is unsafe, make list
+        for name in list(self.category_tabs.keys()):
+            self.tabview.delete(name)
+            
+        self.category_tabs.clear()
+        
+        # Re-create all
+        for cat in self.config_data["categories"]:
+            self._create_single_tab(cat)
+            
+        if current_selection:
+            try:
+                self.tabview.set(current_selection)
+            except:
+                pass
+                
+        self._save_config()
+
+    def _delete_category(self, tab_name):
+        if messagebox.askyesno("Löschen", f"Kategorie '{tab_name}' und alle Verknüpfungen darin wirklich löschen?"):
+             # Update Data
+            self.config_data["categories"] = [c for c in self.config_data["categories"] if c["name"] != tab_name]
+            
+            # Update UI
+            self.tabview.delete(tab_name)
+            if tab_name in self.category_tabs:
+                del self.category_tabs[tab_name]
+                
+            self._save_config()
+
+    def _create_tabs(self):
+        for cat in self.config_data["categories"]:
+            self._create_single_tab(cat)
+
+    def _create_single_tab(self, cat):
+        name = cat["name"]
+        tab = self.tabview.add(name)
+        category_tab = CategoryTab(tab, cat, self.config_data.get("settings", {}), self._save_config)
+        category_tab.pack(fill="both", expand=True)
+        self.category_tabs[name] = category_tab
+        
+        # Bind Context Menu
+        self._bind_tab_context_menu(name)
 
     def _on_search(self, *args):
         query = self.search_var.get().lower()

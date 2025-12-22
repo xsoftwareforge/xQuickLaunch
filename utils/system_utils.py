@@ -76,3 +76,34 @@ def check_autostart(app_name="QuickLaunch") -> bool:
             winreg.CloseKey(key)
     except Exception:
         return False
+
+def resolve_lnk_path(lnk_path):
+    """
+    Resolves the target of a Windows Shortcut (.lnk) file methods.
+    Uses PowerShell to avoid extra dependencies like pywin32.
+    """
+    path = Path(lnk_path)
+    if not path.exists() or path.suffix.lower() != '.lnk':
+        return str(path)
+        
+    if sys.platform != 'win32':
+        return str(path)
+        
+    try:
+        cmd = f'powershell -NoProfile -Command "$sh = New-Object -ComObject WScript.Shell; $s = $sh.CreateShortcut(\'{str(path)}\'); Write-Output $s.TargetPath"'
+        # Running with CREATE_NO_WINDOW to avoid flashing console
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        
+        # Use subprocess.check_output
+        import subprocess
+        result = subprocess.check_output(cmd, startupinfo=startupinfo, text=True, shell=False)
+        target = result.strip()
+        
+        if target and os.path.exists(target):
+            return target
+    except Exception as e:
+        print(f"Error resolving lnk {lnk_path}: {e}")
+        
+    return str(path)
+

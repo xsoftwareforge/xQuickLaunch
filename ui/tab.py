@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox
+
 from pathlib import Path
 from tkinterdnd2 import DND_FILES
 
@@ -21,15 +21,19 @@ class CategoryTab(ctk.CTkFrame):
         
         self.configure(fg_color="transparent")
         
-        # Drag & Drop
-        # Check if DnD is enabled in the main app
+        # Drag & Drop - verzögert registrieren
+        self.after(200, self._setup_dnd)
+        
+    def _setup_dnd(self):
         try:
-             # winfo_toplevel() returns the main window (QuickLaunchApp)
+            # winfo_toplevel() returns the main window (QuickLaunchApp)
             if getattr(self.winfo_toplevel(), "dnd_enabled", False):
                 self.drop_target_register(DND_FILES)
                 self.dnd_bind('<<Drop>>', self._on_drop)
-        except Exception:
-            pass
+            # else:
+                # print("DnD not enabled on toplevel") # Silent fail is better for user unless debug
+        except Exception as e:
+            print(f"DnD setup failed in CategoryTab: {e}")
         
         # Scrollbarer Bereich
         self.scroll_frame = ctk.CTkScrollableFrame(
@@ -272,10 +276,9 @@ class CategoryTab(ctk.CTkFrame):
                 self.add_shortcut_from_path(file_path)
     
     def _delete_shortcut(self, shortcut_data):
-        if messagebox.askyesno("Löschen", f"'{shortcut_data['name']}' wirklich löschen?"):
-            self.category_data["shortcuts"].remove(shortcut_data)
-            self.save_callback()
-            self._render_tiles()
+        self.category_data["shortcuts"].remove(shortcut_data)
+        self.save_callback()
+        self._render_tiles()
     
     def _edit_shortcut(self, shortcut_data):
         EditDialog(self, shortcut_data, self.save_callback, self._render_tiles)

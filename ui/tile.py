@@ -39,7 +39,11 @@ class ShortcutTile(ctk.CTkFrame):
         if image_path and os.path.exists(image_path):
             try:
                 pil_img = Image.open(image_path)
-                # Skalierung für HighDPI
+                # Resize with high quality filter to prevent pixelation
+                # We resize to a bit larger than target to keep detail, or exact target with Lanczos
+                pil_img = pil_img.resize((64, 64), Image.Resampling.LANCZOS)
+                
+                # Skalierung für HighDPI handled by CTkImage, passing PIL image
                 ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(40, 40))
                 self.icon_label = ctk.CTkLabel(
                     self,

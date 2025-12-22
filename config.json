@@ -1,8 +1,16 @@
 {
   "categories": [
     {
-      "name": "Allgemein",
-      "shortcuts": []
+      "name": "Games",
+      "shortcuts": [
+        {
+          "name": "Anno 1800 Benchmark (DX12)",
+          "path": "C:\\Users\\micro\\Desktop\\Anno 1800 Benchmark (DX12).url",
+          "type": "file",
+          "icon": "📄",
+          "image_path": "D:\\DEV\\Python\\xhotbar\\icons\\02736b6fccd2496899f7535677b5301d.png"
+        }
+      ]
     },
     {
       "name": "Arbeit",
@@ -17,7 +25,7 @@
     "theme": "dark",
     "columns": 4,
     "tile_size": 100,
-    "free_placement": true,
+    "free_placement": false,
     "topbar_always_on_top": true,
     "quicklaunch_always_on_top": false,
     "accent_color": "Red"
